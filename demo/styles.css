@@ -114,7 +114,9 @@ body {
 }
 
 body .app-shell,
-body .app-shell * {
+body .app-shell *,
+body .device-gate,
+body .device-gate * {
   font-family: Inter, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif !important;
   color: var(--text);
@@ -442,6 +444,8 @@ body .app-shell .search-box input {
 /* Main content */
 
 .page-content {
+  /* Overrides the hostile `main { display: grid }` rule above. */
+  display: block;
   width: 100%;
   max-width: 1700px;
   margin: 0 auto;
@@ -1186,6 +1190,63 @@ body .app-shell tbody tr[hidden] {
 }
 
 /* Respect users who prefer reduced motion. */
+
+/* Small-screen gate: the dashboard needs at least a tablet-width screen */
+
+.device-gate {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    display: none;
+  }
+
+  .device-gate {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 24px 16px;
+    background: var(--navy);
+  }
+
+  .device-gate-card {
+    max-width: 360px;
+    padding: 32px 24px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-hover);
+    text-align: center;
+  }
+
+  .device-gate-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 18px;
+    border-radius: 12px;
+    background: var(--teal);
+    color: #fff !important;
+    font-size: 24px;
+  }
+
+  .device-gate-title {
+    margin: 0 0 10px;
+    color: var(--navy) !important;
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  .device-gate-copy {
+    margin: 0;
+    color: var(--muted) !important;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,
