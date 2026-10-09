@@ -25,6 +25,7 @@ services:
       PORT: 4000
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       WIDGET_TOKEN: ${WIDGET_TOKEN:?set in .env}
+      INGEST_API_KEY: ${INGEST_API_KEY:?set in .env}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?set in .env}
     ports: ["4000:4000"]
     depends_on:
@@ -45,4 +46,5 @@ services:
       WIDGET_URL: ${WIDGET_URL}
       SERVER_URL: ${SERVER_URL}
       WIDGET_TOKEN: ${WIDGET_TOKEN}
+      INGEST_API_KEY: ${INGEST_API_KEY}
     ports: ["5050:80"]

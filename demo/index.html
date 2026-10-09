@@ -10,6 +10,7 @@
 
   <link rel="stylesheet" href="./styles.css" />
   <script src="./app.js" defer></script>
+  <script src="./hmis-integration.js" defer></script>
 </head>
 
 <body>
@@ -448,6 +449,80 @@
                 <button class="page-number" type="button" disabled>›</button>
               </div>
             </div>
+          </section>
+
+          <!-- HMIS integration: sends raw observations to the widget server -->
+          <section class="panel feed-panel" id="record-observation">
+            <div class="section-heading">
+              <div>
+                <h2 class="section-title">Record observation</h2>
+                <div class="section-subtitle">
+                  Saved observations are assessed by the widget server and
+                  streamed to the live feed
+                </div>
+              </div>
+            </div>
+
+            <form class="feed-form" id="observation-form"
+                  data-server-url="http://localhost:4000"
+                  data-api-key="dev-ingest-key-change-me">
+              <div class="feed-row">
+                <label class="feed-field">
+                  <span class="feed-label">Patient</span>
+                  <select name="patient" id="obs-patient" required></select>
+                </label>
+                <label class="feed-field">
+                  <span class="feed-label">Observation</span>
+                  <select name="kind" id="obs-kind">
+                    <option value="vitals">Vital signs</option>
+                    <option value="lab">Lab result</option>
+                  </select>
+                </label>
+              </div>
+
+              <fieldset class="feed-row" data-kind="vitals">
+                <label class="feed-field">
+                  <span class="feed-label">SpO2 (%)</span>
+                  <input name="spo2" type="number" min="0" max="100" placeholder="97" />
+                </label>
+                <label class="feed-field">
+                  <span class="feed-label">Heart rate (bpm)</span>
+                  <input name="heartRate" type="number" min="0" max="300" placeholder="78" />
+                </label>
+                <label class="feed-field">
+                  <span class="feed-label">Resp. rate (/min)</span>
+                  <input name="respiratoryRate" type="number" min="0" max="80" placeholder="16" />
+                </label>
+                <label class="feed-field">
+                  <span class="feed-label">Temperature (°C)</span>
+                  <input name="temperature" type="number" min="25" max="45" step="0.1" placeholder="36.8" />
+                </label>
+                <label class="feed-field">
+                  <span class="feed-label">Systolic BP (mmHg)</span>
+                  <input name="systolicBp" type="number" min="0" max="300" placeholder="120" />
+                </label>
+              </fieldset>
+
+              <fieldset class="feed-row" data-kind="lab" hidden>
+                <label class="feed-field">
+                  <span class="feed-label">Test</span>
+                  <select name="test">
+                    <option value="potassium">Potassium (mmol/L)</option>
+                    <option value="sodium">Sodium (mmol/L)</option>
+                    <option value="glucose">Glucose (mmol/L)</option>
+                    <option value="hemoglobin">Haemoglobin (g/dL)</option>
+                    <option value="creatinine">Creatinine (µmol/L)</option>
+                  </select>
+                </label>
+                <label class="feed-field">
+                  <span class="feed-label">Value</span>
+                  <input name="value" type="number" step="any" required placeholder="4.2" />
+                </label>
+              </fieldset>
+
+              <button class="feed-submit" type="submit">Save observation</button>
+            </form>
+            <p class="feed-status" id="feed-status" role="status"></p>
           </section>
 
           <footer class="app-footer">

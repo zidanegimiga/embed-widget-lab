@@ -1198,6 +1198,90 @@ body .app-shell tbody tr[hidden] {
 
 /* Respect users who prefer reduced motion. */
 
+/* Record observation */
+
+.feed-panel {
+  margin-bottom: 25px;
+}
+
+.feed-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+body .app-shell .feed-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+body .app-shell .feed-row[hidden] {
+  display: none;
+}
+
+.feed-field {
+  display: grid;
+  gap: 6px;
+}
+
+.feed-label {
+  color: var(--muted) !important;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+body .app-shell .feed-field select,
+body .app-shell .feed-field input {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-soft);
+  color: var(--text) !important;
+  font-size: 12px;
+  outline: none;
+}
+
+body .app-shell .feed-field select:focus,
+body .app-shell .feed-field input:focus {
+  border-color: var(--teal);
+}
+
+body .app-shell .feed-submit {
+  justify-self: start;
+  height: 38px;
+  padding: 0 18px !important;
+  border-radius: 9px;
+  background: var(--teal) !important;
+  color: #fff !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+body .app-shell .feed-submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.feed-status {
+  min-height: 18px;
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
+.feed-status.ok {
+  color: var(--green) !important;
+}
+
+.feed-status.error {
+  color: var(--red) !important;
+}
+
 /* Small-screen gate: the dashboard needs at least a tablet-width screen */
 
 .device-gate {
