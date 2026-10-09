@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useDraggable } from './useDraggable';
 import { useEventStream } from './useEventStream';
 import type { WidgetConfig } from './types';
@@ -37,6 +37,17 @@ export function Widget({ config }: { config: WidgetConfig }) {
                 </div>
                 <div>{e.message}</div>
                 {e.patient && <div className="patient">{e.patient}</div>}
+                {e.details && (
+                  <dl className="details">
+                    {Object.entries(e.details).map(([label, value]) => (
+                      <Fragment key={label}>
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                )}
+                {e.source && <div className="source">via {e.source}</div>}
               </li>
             ))}
           </ul>

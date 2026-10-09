@@ -15,6 +15,8 @@ export interface HmisEvent {
   severity: 'info' | 'warning' | 'critical';
   message: string;
   patient?: string;
+  source?: string;
+  details?: Record<string, string | number>;
   ts: string;
 }
 
