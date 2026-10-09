@@ -1,0 +1,11 @@
+{
+  "name": "embed-widget-lab",
+  "private": true,
+  "workspaces": ["widget", "server"],
+  "scripts": {
+    "build": "npm run build -w widget",
+    "dev": "npm run build && node server/index.mjs",
+    "dev:rabbit": "npm run build && RABBITMQ_URL=amqp://guest:guest@localhost:5672 node server/index.mjs",
+    "publish:event": "node server/publish.mjs"
+  }
+}
