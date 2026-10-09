@@ -63,3 +63,8 @@ footer {
   background: #f7f9fb;
 }
 footer button { background: #e6ebf1; color: #1c2430; }
+
+/* Supported screens start at iPad width; below that the widget stays out of the way. */
+@media (max-width: 767px) {
+  .panel { display: none; }
+}
