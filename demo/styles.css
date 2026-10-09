@@ -88,9 +88,77 @@ th {
   --red: #c2414b;
   --red-soft: #fff0f0;
 
+  --subtle: #94a0b0;
+  --text-secondary: #536278;
+  --divider: #edf0f4;
+  --track: #edf1f5;
+  --row-hover: #f8fbfd;
+  --topbar-bg: rgb(255 255 255 / 94%);
+  --avatar-bg: #dcece9;
+  --avatar-text: #176b64;
+  --chip-bg: #edf2f8;
+  --chip-text: #405c80;
+  --status-blue-text: #3768bd;
+  --status-amber-text: #a46c14;
+
+  /* The sidebar stays dark in both themes */
+  --sidebar: #172b4d;
+  --sidebar-width: 248px;
+  --sidebar-collapsed-width: 76px;
+
   --radius: 14px;
   --shadow: 0 2px 8px rgb(23 43 77 / 4%);
   --shadow-hover: 0 12px 28px rgb(23 43 77 / 8%);
+
+  color-scheme: light;
+}
+
+/* Set on <html> by the inline script in index.html (saved choice, else OS setting) */
+:root[data-theme="dark"] {
+  --page: #0e1520;
+  --surface: #161f2d;
+  --surface-soft: #1b2636;
+  --border: #253246;
+
+  --navy: #e9eef6;
+  --text: #cfd8e5;
+  --muted: #8b99ad;
+  --subtle: #6d7c91;
+  --text-secondary: #a9b5c6;
+
+  --teal: #14a597;
+  --teal-dark: #5fd3c6;
+  --teal-soft: rgb(20 165 151 / 16%);
+
+  --blue: #6d9cf0;
+  --blue-soft: rgb(109 156 240 / 15%);
+
+  --green: #3fbf8a;
+  --green-soft: rgb(63 191 138 / 15%);
+
+  --amber: #e0a84a;
+  --amber-soft: rgb(224 168 74 / 15%);
+
+  --red: #ef7a82;
+  --red-soft: rgb(239 122 130 / 14%);
+
+  --divider: #212d3e;
+  --track: #243146;
+  --row-hover: #1a2433;
+  --topbar-bg: rgb(22 31 45 / 92%);
+  --avatar-bg: rgb(20 165 151 / 18%);
+  --avatar-text: #7de1d6;
+  --chip-bg: #222f45;
+  --chip-text: #a9c1e6;
+  --status-blue-text: #8fb4f5;
+  --status-amber-text: #e9b866;
+
+  --sidebar: #0a111b;
+
+  --shadow: 0 2px 8px rgb(0 0 0 / 25%);
+  --shadow-hover: 0 12px 28px rgb(0 0 0 / 35%);
+
+  color-scheme: dark;
 }
 
 /* =========================================================
@@ -161,8 +229,38 @@ body .app-shell input:focus-visible {
 
 .app-layout {
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
+  transition: grid-template-columns 200ms ease;
+}
+
+/* Set on <html> by app.js; remembered across visits */
+:root[data-sidebar="collapsed"] .app-layout {
+  grid-template-columns: var(--sidebar-collapsed-width) minmax(0, 1fr);
+}
+
+:root[data-sidebar="collapsed"] .sidebar {
+  padding-inline: 12px;
+}
+
+:root[data-sidebar="collapsed"] .brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+:root[data-sidebar="collapsed"] .brand-text,
+:root[data-sidebar="collapsed"] .nav-label,
+:root[data-sidebar="collapsed"] .nav-text,
+:root[data-sidebar="collapsed"] .nav-count,
+:root[data-sidebar="collapsed"] .sidebar-bottom {
+  display: none;
+}
+
+:root[data-sidebar="collapsed"] .nav-item {
+  justify-content: center;
+  width: 44px;
+  margin-inline: auto;
+  padding: 0;
 }
 
 /* Sidebar */
@@ -175,7 +273,7 @@ body .app-shell input:focus-visible {
   height: 100vh;
   padding: 26px 16px 18px;
   overflow-y: auto;
-  background: var(--navy);
+  background: var(--sidebar);
   z-index: 5;
 }
 
@@ -262,9 +360,13 @@ body .app-shell .nav-list li {
 }
 
 .nav-item.active {
-  background: rgb(15 148 136 / 20%);
-  color: #7de1d6 !important;
-  box-shadow: inset 3px 0 #27b9a9;
+  background: rgb(255 255 255 / 10%);
+  color: #fff !important;
+  font-weight: 650;
+}
+
+body .app-shell .nav-item.active .nav-icon {
+  color: #fff;
 }
 
 .nav-icon {
@@ -335,7 +437,7 @@ body .app-shell .nav-list li {
   min-height: 76px;
   padding: 0 34px;
   border-bottom: 1px solid var(--border);
-  background: rgb(255 255 255 / 94%);
+  background: var(--topbar-bg);
   backdrop-filter: blur(12px);
 }
 
@@ -352,6 +454,31 @@ body .app-shell .nav-list li {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.topbar-start {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Show the icon for the theme you would switch to */
+.theme-toggle .icon-sun,
+:root[data-theme="dark"] .theme-toggle .icon-moon {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle .icon-sun {
+  display: contents;
+}
+
+.theme-toggle .icon-moon {
+  display: contents;
 }
 
 .search-box {
@@ -389,7 +516,7 @@ body .app-shell .search-box input {
 }
 
 .search-box input::placeholder {
-  color: #98a4b5 !important;
+  color: var(--subtle) !important;
 }
 
 .icon-button {
@@ -400,7 +527,7 @@ body .app-shell .search-box input {
   height: 38px;
   border: 1px solid var(--border) !important;
   border-radius: 9px;
-  background: #fff !important;
+  background: var(--surface) !important;
   font-size: 17px !important;
 }
 
@@ -410,7 +537,7 @@ body .app-shell .search-box input {
   right: 7px;
   width: 7px;
   height: 7px;
-  border: 1px solid #fff;
+  border: 1px solid var(--surface);
   border-radius: 50%;
   background: var(--red);
 }
@@ -430,8 +557,8 @@ body .app-shell .search-box input {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #dcece9;
-  color: #176b64 !important;
+  background: var(--avatar-bg);
+  color: var(--avatar-text) !important;
   font-size: 12px;
   font-weight: 800;
 }
@@ -485,7 +612,7 @@ body .app-shell .search-box input {
   height: 7px;
   border-radius: 50%;
   background: #20a779;
-  box-shadow: 0 0 0 3px #e2f6ed;
+  box-shadow: 0 0 0 3px var(--green-soft);
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -701,7 +828,7 @@ body .app-shell .search-box input {
   height: 7px;
   overflow: hidden;
   border-radius: 20px;
-  background: #edf1f5;
+  background: var(--track);
 }
 
 .progress-fill {
@@ -728,7 +855,7 @@ body .app-shell .search-box input {
   align-items: flex-start;
   gap: 13px;
   padding: 15px 0;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--divider);
 }
 
 .activity-item:last-child {
@@ -771,7 +898,7 @@ body .app-shell .search-box input {
 
 .activity-time {
   flex-shrink: 0;
-  color: #94a0b0 !important;
+  color: var(--subtle) !important;
   font-size: 10px;
 }
 
@@ -803,7 +930,7 @@ body .app-shell .table-filter {
   padding: 8px 14px !important;
   border: 1px solid var(--border) !important;
   border-radius: 8px;
-  background: #fff !important;
+  background: var(--surface) !important;
   color: var(--text) !important;
   font-size: 11px !important;
   font-weight: 600 !important;
@@ -821,13 +948,13 @@ body .app-shell table {
 }
 
 body .app-shell thead {
-  background: #f8fafc;
+  background: var(--surface-soft);
 }
 
 body .app-shell th {
   padding: 13px 23px;
   border-bottom: 1px solid var(--border);
-  color: #8995a7 !important;
+  color: var(--subtle) !important;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.8px;
@@ -838,14 +965,14 @@ body .app-shell th {
 
 body .app-shell td {
   padding: 15px 23px;
-  border-bottom: 1px solid #edf0f4;
-  color: #536278 !important;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-secondary) !important;
   font-size: 11px;
   white-space: nowrap;
 }
 
 body .app-shell tbody tr:hover {
-  background: #f8fbfd;
+  background: var(--row-hover);
 }
 
 body .app-shell tbody tr:last-child td {
@@ -869,8 +996,8 @@ body .app-shell tbody tr[hidden] {
   width: 35px;
   height: 35px;
   border-radius: 10px;
-  background: #edf2f8;
-  color: #405c80 !important;
+  background: var(--chip-bg);
+  color: var(--chip-text) !important;
   font-size: 10px;
   font-weight: 800;
 }
@@ -883,7 +1010,7 @@ body .app-shell tbody tr[hidden] {
 
 .patient-id {
   margin-top: 4px;
-  color: #96a1b1 !important;
+  color: var(--subtle) !important;
   font-size: 10px;
 }
 
@@ -907,12 +1034,12 @@ body .app-shell tbody tr[hidden] {
 
 .status.admitted {
   background: var(--blue-soft);
-  color: #3768bd !important;
+  color: var(--status-blue-text) !important;
 }
 
 .status.review {
   background: var(--amber-soft);
-  color: #a46c14 !important;
+  color: var(--status-amber-text) !important;
 }
 
 .status.critical {
@@ -950,7 +1077,7 @@ body .app-shell tbody tr[hidden] {
   height: 29px;
   border: 1px solid var(--border) !important;
   border-radius: 7px;
-  background: #fff !important;
+  background: var(--surface) !important;
   color: var(--muted) !important;
   font-size: 10px !important;
 }
@@ -966,7 +1093,7 @@ body .app-shell tbody tr[hidden] {
   justify-content: space-between;
   gap: 15px;
   padding-top: 25px;
-  color: #96a1b1 !important;
+  color: var(--subtle) !important;
   font-size: 10px;
 }
 
@@ -1002,8 +1129,8 @@ body .app-shell tbody tr[hidden] {
 /* Responsive layouts */
 
 @media (max-width: 1200px) {
-  .app-layout {
-    grid-template-columns: 215px minmax(0, 1fr);
+  :root {
+    --sidebar-width: 215px;
   }
 
   .topbar {
@@ -1201,7 +1328,7 @@ body .app-shell tbody tr[hidden] {
 /* Record observation */
 
 .feed-panel {
-  margin-bottom: 25px;
+  margin: 25px 0;
 }
 
 .feed-form {
@@ -1300,7 +1427,7 @@ body .app-shell .feed-submit:disabled {
     min-height: 100vh;
     min-height: 100dvh;
     padding: 24px 16px;
-    background: var(--navy);
+    background: var(--sidebar);
   }
 
   .device-gate-card {
