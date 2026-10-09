@@ -13,6 +13,10 @@ const envSchema = z.object({
   RABBITMQ_URL: z.url().optional(),
   RABBITMQ_EXCHANGE: z.string().default('hmis.events'),
   FAKE_EVENT_INTERVAL_MS: z.coerce.number().int().positive().default(4000),
+  // Number of reverse proxies in front of the server (1 on Render), so client IPs are real.
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  // Requests per minute per client IP on the ingest endpoints.
+  INGEST_RATE_LIMIT: z.coerce.number().int().positive().default(30),
 }).superRefine((env, ctx) => {
   if (env.NODE_ENV !== 'production') return;
   for (const key of ['WIDGET_TOKEN', 'INGEST_API_KEY'] as const) {

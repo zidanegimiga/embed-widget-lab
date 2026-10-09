@@ -1,0 +1,28 @@
+# Render Blueprint for the event server. In Render: New > Blueprint > pick this repo.
+services:
+  - type: web
+    name: hmis-widget-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      # Render puts one proxy in front of the service; needed for per-IP rate limits.
+      - key: TRUST_PROXY
+        value: "1"
+      # Generated once by Render. Copy them into the demo's Cloudflare Pages settings.
+      - key: WIDGET_TOKEN
+        generateValue: true
+      - key: INGEST_API_KEY
+        generateValue: true
+      # Asked for during setup:
+      - key: RABBITMQ_URL # amqps://... from CloudAMQP
+        sync: false
+      - key: ALLOWED_ORIGINS # the demo's URL, e.g. https://citycare-demo.pages.dev
+        sync: false

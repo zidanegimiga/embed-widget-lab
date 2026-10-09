@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ingestRateLimit } from '../../middleware/rate-limit.ts';
 import { requireApiKey } from '../../middleware/require-api-key.ts';
 import { requireToken } from '../../middleware/require-token.ts';
 import { receiveEvent, streamEvents } from './events.controller.ts';
@@ -9,4 +10,4 @@ export const eventsRouter = Router();
 eventsRouter.get('/events', requireToken, streamEvents);
 
 // The HMIS pushes events in (server-to-server API key).
-eventsRouter.post('/events', requireApiKey, receiveEvent);
+eventsRouter.post('/events', ingestRateLimit, requireApiKey, receiveEvent);
