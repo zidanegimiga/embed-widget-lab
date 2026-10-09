@@ -1,11 +1,20 @@
 {
   "name": "embed-widget-lab",
   "private": true,
-  "workspaces": ["widget", "server"],
+  "workspaces": [
+    "widget",
+    "server"
+  ],
   "scripts": {
     "build": "npm run build -w widget",
-    "dev": "npm run build && node server/index.mjs",
-    "dev:rabbit": "npm run build && RABBITMQ_URL=amqp://guest:guest@localhost:5672 node server/index.mjs",
-    "publish:event": "node server/publish.mjs"
+    "dev": "npm run build && concurrently -k -n server,widget,cdn,demo -c blue,magenta,cyan,green \"npm run dev -w server\" \"npm run watch -w widget\" \"npm run preview -w widget\" \"vite demo --port 5050 --strictPort\"",
+    "typecheck": "tsc -p widget && npm run typecheck -w server",
+    "publish:event": "npm run publish:event -w server --",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:publish": "docker compose exec server node src/scripts/publish-event.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
   }
 }
