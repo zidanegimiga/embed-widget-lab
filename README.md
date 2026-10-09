@@ -4,19 +4,91 @@ Experiment: a draggable React widget that any site can embed with one script tag
 floating above the host page and streaming events over WebSocket or SSE,
 with RabbitMQ as the upstream source.
 
-## Run
+## Pieces
+
+Each piece deploys on its own and talks to the others only over URLs:
+
+| Piece    | What                                  | Local port | Deploys to                               |
+|----------|---------------------------------------|------------|------------------------------------------|
+| widget   | static `widget.js` / `widget.mjs`     | 4100       | any CDN or static host (nginx image)     |
+| server   | Express event API, WebSocket + SSE    | 4000       | any container host                       |
+| rabbitmq | message broker                        | 5672       | container, or managed (e.g. CloudAMQP)   |
+| demo     | stand-in for a customer HMIS          | 5050       | anywhere; it only pastes the script tag  |
+
+The HMIS is never ours. All it adds is:
+
+    <script src="https://WIDGET_HOST/widget.js" data-token="..." async></script>
+
+`data-url` is optional when the widget was built with `VITE_SERVER_URL`.
+
+## Run with Docker (production-like)
+
+    cp .env.example .env      # set real secrets and URLs
+    npm run docker:up
+    npm run docker:publish -- "Code blue, Ward 2" critical
+
+Open http://localhost:5050. The server runs with NODE_ENV=production: no fake events,
+no POST /publish, token and origin checks on. RabbitMQ UI: http://localhost:15672.
+
+## Run without Docker (development)
 
     npm install
-    npm run dev            # fake events every 4s
-    npm run dev:rabbit     # consume RabbitMQ exchange "hmis.events" (set RABBITMQ_URL if not guest/guest)
+    npm run dev               # server (fake events), widget watch build, widget host, demo host
 
-- http://localhost:5050  fake page (different origin from the widget)
-- http://localhost:4000/widget.js  the embeddable bundle
+## Deploying for real
 
-Push an event by hand:
+1. RabbitMQ: create a dedicated user (guest/guest only works from localhost).
+2. Server: set `RABBITMQ_URL`, `WIDGET_TOKEN`, `ALLOWED_ORIGINS` (the HMIS origins), `NODE_ENV=production`.
+   Put it behind HTTPS so the widget connects with `wss://` and `https://`.
+3. Widget: build with `VITE_SERVER_URL=https://your-server`, upload `widget/dist` to a CDN.
+4. HMIS: paste the script tag with its token.
 
-    curl -X POST localhost:4000/publish -d '{"type":"x","severity":"critical","message":"hi"}'
-    RABBITMQ_URL=amqp://user:pass@localhost:5672 npm run publish:event -- "Code blue" critical
+Type-check both packages: `npm run typecheck`
+
+## Security
+
+What the server enforces in production:
+
+- `ALLOWED_ORIGINS` limits which HMIS sites can connect. WebSocket upgrades from other origins get a 401,
+  and SSE responses carry no CORS header for them, so the browser blocks them.
+- `WIDGET_TOKEN` is checked on both transports, during the WebSocket handshake and on `GET /events`.
+- Tokens are redacted from request logs, and request headers are not logged.
+- No fake events and no `POST /publish`. If RabbitMQ is unreachable at startup, the server refuses to start
+  instead of serving made-up clinical data.
+- If RabbitMQ restarts, the server reconnects with backoff and the widgets keep their connections.
+
+Known limitation, to fix before real hospitals use this: the token is written into the HMIS page,
+so anyone who views the page source can copy it. It identifies the embedding site, not the person
+using it, and cannot limit what they see.
+
+The planned fix is per-user signed tokens:
+
+1. The HMIS backend issues a short-lived signed token (for example a JWT) naming the tenant, user,
+   role and active visit.
+2. The widget sends it when connecting, and the server verifies the signature and expiry.
+3. The server only forwards events that match the token's tenant, role and visit, and the widget
+   requests a new token when the user switches patient or visit.
+
+## Server layout
+
+    server/src/
+      server.ts              entry: starts HTTP server, WebSocket, producer; graceful shutdown
+      app.ts                 builds the Express app (no listen, so it stays testable)
+      config/env.ts          env vars validated with Zod once, exported as a frozen singleton
+      lib/                   shared infrastructure: logger, RabbitMQ connection, access rules, HttpError
+      middleware/            require-token, not-found, error-handler
+      modules/
+        events/
+          event.schema.ts    event shape + createEvent()
+          event-bus.ts       in-process pub/sub singleton between producers and transports
+          events.routes.ts   GET /events (SSE), POST /publish
+          events.controller.ts
+          producers/         where events come from: rabbitmq, fake (behind one interface)
+          transports/        how events reach browsers: ws, sse
+      scripts/publish-event.ts
+
+Producers only publish to the bus and transports only subscribe to it, so adding Kafka or a
+new transport means adding one file without touching the others.
 
 ## Embed
 
