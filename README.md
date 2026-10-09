@@ -82,14 +82,68 @@ For messages that need no processing, the HMIS can post an event directly:
     npm install
     npm run dev               # server (fake events), widget watch build, widget host, demo host
 
-## Deploying for real
+## Deploy for free
 
-1. RabbitMQ: create a dedicated user (guest/guest only works from localhost).
-2. Server: set `RABBITMQ_URL`, `WIDGET_TOKEN`, `INGEST_API_KEY`, `ALLOWED_ORIGINS` (the HMIS origins),
-   `NODE_ENV=production`.
-   Put it behind HTTPS so the widget connects with `wss://` and `https://`.
-3. Widget: build with `VITE_SERVER_URL=https://your-server`, upload `widget/dist` to a CDN.
-4. HMIS: paste the script tag with its token, and call `POST /observations` from its backend with the API key.
+| Piece    | Host                         | Free plan notes                                                    |
+|----------|------------------------------|--------------------------------------------------------------------|
+| RabbitMQ | CloudAMQP                    | shared instance, enough for a demo                                 |
+| server   | Render (Docker, `render.yaml`) | sleeps when idle; the first request after that is slow while it wakes |
+| widget   | Cloudflare Pages             | global CDN, headers from `widget/public/_headers`                  |
+| demo     | Cloudflare Pages (separate project) | its own domain, so the embed is genuinely cross-site       |
+
+While the server sleeps, widgets show as disconnected and reconnect on their own once it wakes.
+Observations sent in the meantime wait in the durable RabbitMQ queue and are processed on wake.
+Free plans change, so check each provider's current limits.
+
+### 1. RabbitMQ on CloudAMQP
+
+Create a free instance and copy its AMQP URL (`amqps://...`).
+
+### 2. Server on Render
+
+1. Push the repo to GitHub.
+2. In Render: **New > Blueprint**, pick the repo. It reads `render.yaml`.
+3. Fill in `RABBITMQ_URL` with the CloudAMQP URL. Set `ALLOWED_ORIGINS` to a placeholder such as
+   `https://example.com` for now (you will know the demo URL in step 4).
+4. After the first deploy, note the service URL (e.g. `https://hmis-widget-api.onrender.com`)
+   and copy the generated `WIDGET_TOKEN` and `INGEST_API_KEY` from its Environment tab.
+5. Check `https://<service>/health` returns `{"status":"ok"}`.
+
+### 3. Widget on Cloudflare Pages
+
+Create a Pages project from the repo:
+
+| Setting               | Value                                   |
+|-----------------------|-----------------------------------------|
+| Build command         | `npm ci && npm run build -w widget`     |
+| Build output directory| `widget/dist`                           |
+| Environment variables | `VITE_SERVER_URL` = the Render URL      |
+
+The Node version comes from `.nvmrc`. Check `https://<widget>.pages.dev/widget.js` loads.
+
+### 4. Demo on Cloudflare Pages
+
+Create a second Pages project from the same repo:
+
+| Setting               | Value                                                        |
+|-----------------------|--------------------------------------------------------------|
+| Build command         | `node demo/build.mjs`                                        |
+| Build output directory| `demo/dist`                                                  |
+| Environment variables | `WIDGET_URL`, `SERVER_URL`, `WIDGET_TOKEN`, `INGEST_API_KEY` |
+
+### 5. Connect them
+
+In Render, set `ALLOWED_ORIGINS` to the demo URL (e.g. `https://citycare-demo.pages.dev`,
+no trailing slash) and save. Render redeploys. Open the demo, record an observation, and it
+appears in the widget.
+
+### Notes
+
+- The demo's `INGEST_API_KEY` is visible in its page source. The ingest endpoints are rate limited
+  per IP (`INGEST_RATE_LIMIT`, default 30 per minute), and you can rotate the key in Render and
+  Pages at any time. A real HMIS keeps its key on its server.
+- Rotating `WIDGET_TOKEN` or `INGEST_API_KEY` means updating Render and the demo project, then
+  redeploying the demo.
 
 Type-check both packages: `npm run typecheck`
 
@@ -119,32 +173,22 @@ The planned fix is per-user signed tokens:
 3. The server only forwards events that match the token's tenant, role and visit, and the widget
    requests a new token when the user switches patient or visit.
 
-## Server layout
+## Repository layout
 
-    server/src/
-      server.ts              entry: starts HTTP server, WebSocket, producer; graceful shutdown
-      app.ts                 builds the Express app (no listen, so it stays testable)
-      config/env.ts          env vars validated with Zod once, exported as a frozen singleton
-      lib/                   shared infrastructure: logger, RabbitMQ connection, access rules, HttpError
-      middleware/            require-token, not-found, error-handler
-      modules/
-        observations/
-          observation.schema.ts   raw HMIS data (vitals, lab), validated with Zod
-          reference-ranges.ts     demo thresholds and one assess() rule shared by all processors
-          processors/             one processor per observation kind, raw data to result event
-          observation.pipeline.ts durable work queue in RabbitMQ, inline processing without a broker
-          observations.routes.ts  POST /observations (API key)
-        events/
-          event.schema.ts    event shape + createEvent()
-          event-bus.ts       in-process pub/sub singleton between producers and transports
-          events.routes.ts   GET /events (SSE, widget token), POST /events (ingest, API key)
-          events.controller.ts
-          producers/         where events come from: rabbitmq, fake (behind one interface)
-          transports/        how events reach browsers: ws, sse
-      scripts/publish-event.ts
+```
+embed-widget-lab/
+├── server/               Event API (Express, TypeScript). See server/README.md
+├── widget/               Embeddable React widget. See widget/README.md
+├── demo/                 CityCare, a stand-in HMIS that embeds the widget. See demo/README.md
+├── .claude/skills/       Claude Code skills: project conventions for AI-assisted changes
+├── docker-compose.yml    All four services (rabbitmq, server, widget, demo) on separate origins
+├── render.yaml           Render Blueprint for deploying the server
+├── .env.example          Secrets and URLs for docker compose
+├── .nvmrc                Node version for Cloudflare Pages builds
+└── package.json          npm workspaces (server, widget) and root scripts
+```
 
-Producers only publish to the bus and transports only subscribe to it, so adding Kafka or a
-new transport means adding one file without touching the others.
+Each package README has its own annotated folder tree and explains what every folder is for.
 
 ## Embed
 
