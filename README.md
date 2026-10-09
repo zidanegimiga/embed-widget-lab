@@ -28,7 +28,34 @@ The HMIS is never ours. All it adds is:
     npm run docker:publish -- "Code blue, Ward 2" critical
 
 Open http://localhost:5050. The server runs with NODE_ENV=production: no fake events,
-no POST /publish, token and origin checks on. RabbitMQ UI: http://localhost:15672.
+token, API key and origin checks on. RabbitMQ UI: http://localhost:15672.
+
+## Sending events from the HMIS
+
+    HMIS --POST /events + API key--> server --> RabbitMQ --> server --WS/SSE--> widget
+
+The HMIS pushes events to the server with its API key:
+
+    curl -X POST https://your-server/events \
+      -H "Authorization: Bearer $INGEST_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "type": "lab.result",
+        "severity": "warning",
+        "message": "New lab result for P. Otieno",
+        "patient": "P. Otieno / MRN 100871",
+        "source": "CityCare HMIS",
+        "details": { "Ward": "Ward 2A", "Test": "Potassium", "Result": "5.8 mmol/L" }
+      }'
+
+Fields: `type`, `severity` (`info`, `warning`, `critical`), `message`, and optional `patient`,
+`source` and `details` (up to 8 label/value pairs, shown in the widget under the message).
+The server replies `202` with the event id, publishes it to RabbitMQ so every server instance
+gets it, and every connected widget shows it.
+
+In the demo, the "Send to live feed" panel does this from `demo/hmis-integration.js`. It calls
+the API from the browser only because the demo has no backend. A real HMIS calls it from its
+server, so the API key never reaches a browser.
 
 ## Run without Docker (development)
 
@@ -38,10 +65,11 @@ no POST /publish, token and origin checks on. RabbitMQ UI: http://localhost:1567
 ## Deploying for real
 
 1. RabbitMQ: create a dedicated user (guest/guest only works from localhost).
-2. Server: set `RABBITMQ_URL`, `WIDGET_TOKEN`, `ALLOWED_ORIGINS` (the HMIS origins), `NODE_ENV=production`.
+2. Server: set `RABBITMQ_URL`, `WIDGET_TOKEN`, `INGEST_API_KEY`, `ALLOWED_ORIGINS` (the HMIS origins),
+   `NODE_ENV=production`.
    Put it behind HTTPS so the widget connects with `wss://` and `https://`.
 3. Widget: build with `VITE_SERVER_URL=https://your-server`, upload `widget/dist` to a CDN.
-4. HMIS: paste the script tag with its token.
+4. HMIS: paste the script tag with its token, and call `POST /events` from its backend with the API key.
 
 Type-check both packages: `npm run typecheck`
 
@@ -53,7 +81,9 @@ What the server enforces in production:
   and SSE responses carry no CORS header for them, so the browser blocks them.
 - `WIDGET_TOKEN` is checked on both transports, during the WebSocket handshake and on `GET /events`.
 - Tokens are redacted from request logs, and request headers are not logged.
-- No fake events and no `POST /publish`. If RabbitMQ is unreachable at startup, the server refuses to start
+- `POST /events` requires `INGEST_API_KEY` as a Bearer token. The server refuses to start in production
+  without `INGEST_API_KEY` and `WIDGET_TOKEN`.
+- No fake events. If RabbitMQ is unreachable at startup, the server refuses to start
   instead of serving made-up clinical data.
 - If RabbitMQ restarts, the server reconnects with backoff and the widgets keep their connections.
 
@@ -81,7 +111,7 @@ The planned fix is per-user signed tokens:
         events/
           event.schema.ts    event shape + createEvent()
           event-bus.ts       in-process pub/sub singleton between producers and transports
-          events.routes.ts   GET /events (SSE), POST /publish
+          events.routes.ts   GET /events (SSE, widget token), POST /events (ingest, API key)
           events.controller.ts
           producers/         where events come from: rabbitmq, fake (behind one interface)
           transports/        how events reach browsers: ws, sse
