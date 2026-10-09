@@ -5,6 +5,7 @@ import { logger } from './lib/logger.ts';
 import { closeRabbitMQ } from './lib/rabbitmq.ts';
 import { startEventProducer } from './modules/events/producers/index.ts';
 import { attachWebSocketTransport } from './modules/events/transports/ws.transport.ts';
+import { startObservationPipeline, stopObservationPipeline } from './modules/observations/observation.pipeline.ts';
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
@@ -21,6 +22,7 @@ function close(server: Server) {
 await new Promise<void>((resolve) => apiServer.listen(config.PORT, resolve));
 logger.info({ port: config.PORT }, 'Event server listening');
 const producer = await startEventProducer();
+await startObservationPipeline({ useQueue: producer.name === 'rabbitmq' });
 
 let shuttingDown = false;
 async function shutdown(signal: string) {
@@ -29,6 +31,7 @@ async function shutdown(signal: string) {
   logger.info({ signal }, 'Shutting down');
   setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();
 
+  await stopObservationPipeline();
   await producer.stop();
   wsTransport.close();
   await close(apiServer);

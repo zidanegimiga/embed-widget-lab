@@ -6,6 +6,7 @@ import { logger } from './lib/logger.ts';
 import { errorHandler } from './middleware/error-handler.ts';
 import { notFound } from './middleware/not-found.ts';
 import { eventsRouter } from './modules/events/events.routes.ts';
+import { observationsRouter } from './modules/observations/observations.routes.ts';
 
 /** Event API. Kept free of listen() so it can be tested with supertest. */
 export function createApp() {
@@ -35,6 +36,7 @@ export function createApp() {
     res.json({ status: 'ok' });
   });
   app.use(eventsRouter);
+  app.use(observationsRouter);
 
   app.use(notFound);
   app.use(errorHandler);
