@@ -1,0 +1,48 @@
+# Four independently deployable pieces. Locally each gets its own port, so each is its own
+# browser origin, exactly like separate hosts. In production, replace the URLs in .env.
+name: embed-widget-lab
+
+services:
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      # guest/guest only works from localhost, so a remote server needs a real user.
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?set in .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set in .env}
+    ports:
+      - "5672:5672"
+      - "15672:15672" # management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build: { context: ., dockerfile: server/Dockerfile }
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      WIDGET_TOKEN: ${WIDGET_TOKEN:?set in .env}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?set in .env}
+    ports: ["4000:4000"]
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+    restart: unless-stopped
+
+  widget:
+    build:
+      context: .
+      dockerfile: widget/Dockerfile
+      args:
+        VITE_SERVER_URL: ${SERVER_URL:?set in .env}
+    ports: ["4100:80"]
+
+  demo:
+    build: ./demo
+    environment:
+      WIDGET_URL: ${WIDGET_URL}
+      SERVER_URL: ${SERVER_URL}
+      WIDGET_TOKEN: ${WIDGET_TOKEN}
+    ports: ["5050:80"]
