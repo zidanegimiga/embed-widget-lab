@@ -1323,7 +1323,6 @@ body .app-shell tbody tr[hidden] {
   }
 }
 
-/* Respect users who prefer reduced motion. */
 
 /* Record observation */
 
@@ -1466,6 +1465,7 @@ body .app-shell .feed-submit:disabled {
   }
 }
 
+/* Respect users who prefer reduced motion. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

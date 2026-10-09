@@ -1,6 +1,13 @@
 # Stand-in for a customer HMIS. It knows nothing about our code except the script tag.
+FROM node:24-alpine AS build
+WORKDIR /demo
+COPY . .
+ARG WIDGET_URL
+ARG SERVER_URL
+ARG WIDGET_TOKEN
+ARG INGEST_API_KEY
+RUN node build.mjs
+
 FROM nginx:1.29-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY embed-urls.sh /docker-entrypoint.d/40-embed-urls.sh
-RUN chmod +x /docker-entrypoint.d/40-embed-urls.sh
-COPY index.html styles.css app.js hmis-integration.js /usr/share/nginx/html/
+COPY --from=build /demo/dist /usr/share/nginx/html

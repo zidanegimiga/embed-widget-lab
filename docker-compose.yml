@@ -41,10 +41,11 @@ services:
     ports: ["4100:80"]
 
   demo:
-    build: ./demo
-    environment:
-      WIDGET_URL: ${WIDGET_URL}
-      SERVER_URL: ${SERVER_URL}
-      WIDGET_TOKEN: ${WIDGET_TOKEN}
-      INGEST_API_KEY: ${INGEST_API_KEY}
+    build:
+      context: ./demo
+      args:
+        WIDGET_URL: ${WIDGET_URL}
+        SERVER_URL: ${SERVER_URL}
+        WIDGET_TOKEN: ${WIDGET_TOKEN}
+        INGEST_API_KEY: ${INGEST_API_KEY}
     ports: ["5050:80"]
