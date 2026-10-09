@@ -4,6 +4,7 @@ services:
     name: hmis-widget-api
     runtime: docker
     plan: free
+    region: frankfurt # same region as the CloudAMQP instance
     dockerfilePath: ./server/Dockerfile
     dockerContext: .
     healthCheckPath: /health
