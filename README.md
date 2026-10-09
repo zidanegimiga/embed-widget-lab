@@ -30,32 +30,52 @@ The HMIS is never ours. All it adds is:
 Open http://localhost:5050. The server runs with NODE_ENV=production: no fake events,
 token, API key and origin checks on. RabbitMQ UI: http://localhost:15672.
 
-## Sending events from the HMIS
+## Sending patient data from the HMIS
 
-    HMIS --POST /events + API key--> server --> RabbitMQ --> server --WS/SSE--> widget
+The HMIS sends raw patient data. The server assesses it and streams the result to the widgets:
 
-The HMIS pushes events to the server with its API key:
+    HMIS --POST /observations--> server --> RabbitMQ work queue (durable) --> processor
+         --> result event --> RabbitMQ fanout --> every server instance --WS/SSE--> widgets
+
+    curl -X POST https://your-server/observations \
+      -H "Authorization: Bearer $INGEST_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "kind": "vitals",
+        "patient": { "mrn": "102215", "name": "A. Mwangi", "ward": "ICU" },
+        "source": "CityCare HMIS",
+        "recordedBy": "Nurse Achieng",
+        "data": { "spo2": 86, "heartRate": 132, "temperature": 37.1 }
+      }'
+
+Observation kinds:
+
+| kind     | data                                                                         |
+|----------|------------------------------------------------------------------------------|
+| `vitals` | any of `spo2`, `heartRate`, `respiratoryRate`, `temperature`, `systolicBp`   |
+| `lab`    | `test` (`potassium`, `sodium`, `glucose`, `hemoglobin`, `creatinine`), `value` |
+
+The server replies `202` with an observation id straight away. Processing happens off the
+durable queue, so observations survive a restart and any instance can process them. Each
+processor compares values with the ranges in `reference-ranges.ts` and produces an event
+such as "Abnormal vitals for P. Otieno: SpO2 low, Heart rate high", with the readings in
+`details`. Those thresholds are demo values, not clinical guidance.
+
+To add a new kind of observation: add its schema in `observation.schema.ts`, write a
+processor in `processors/`, and add one `case` in `processors/index.ts`.
+
+In the demo, the "Record observation" panel sends these from `demo/hmis-integration.js`.
+It calls the API from the browser only because the demo has no backend. A real HMIS calls
+it from its server, so the API key never reaches a browser.
+
+### Ready-made notifications
+
+For messages that need no processing, the HMIS can post an event directly:
 
     curl -X POST https://your-server/events \
       -H "Authorization: Bearer $INGEST_API_KEY" \
       -H "Content-Type: application/json" \
-      -d '{
-        "type": "lab.result",
-        "severity": "warning",
-        "message": "New lab result for P. Otieno",
-        "patient": "P. Otieno / MRN 100871",
-        "source": "CityCare HMIS",
-        "details": { "Ward": "Ward 2A", "Test": "Potassium", "Result": "5.8 mmol/L" }
-      }'
-
-Fields: `type`, `severity` (`info`, `warning`, `critical`), `message`, and optional `patient`,
-`source` and `details` (up to 8 label/value pairs, shown in the widget under the message).
-The server replies `202` with the event id, publishes it to RabbitMQ so every server instance
-gets it, and every connected widget shows it.
-
-In the demo, the "Send to live feed" panel does this from `demo/hmis-integration.js`. It calls
-the API from the browser only because the demo has no backend. A real HMIS calls it from its
-server, so the API key never reaches a browser.
+      -d '{ "type": "bed.status", "severity": "info", "message": "Bed 12, ICU now available" }'
 
 ## Run without Docker (development)
 
@@ -69,7 +89,7 @@ server, so the API key never reaches a browser.
    `NODE_ENV=production`.
    Put it behind HTTPS so the widget connects with `wss://` and `https://`.
 3. Widget: build with `VITE_SERVER_URL=https://your-server`, upload `widget/dist` to a CDN.
-4. HMIS: paste the script tag with its token, and call `POST /events` from its backend with the API key.
+4. HMIS: paste the script tag with its token, and call `POST /observations` from its backend with the API key.
 
 Type-check both packages: `npm run typecheck`
 
@@ -81,7 +101,7 @@ What the server enforces in production:
   and SSE responses carry no CORS header for them, so the browser blocks them.
 - `WIDGET_TOKEN` is checked on both transports, during the WebSocket handshake and on `GET /events`.
 - Tokens are redacted from request logs, and request headers are not logged.
-- `POST /events` requires `INGEST_API_KEY` as a Bearer token. The server refuses to start in production
+- `POST /observations` and `POST /events` require `INGEST_API_KEY` as a Bearer token. The server refuses to start in production
   without `INGEST_API_KEY` and `WIDGET_TOKEN`.
 - No fake events. If RabbitMQ is unreachable at startup, the server refuses to start
   instead of serving made-up clinical data.
@@ -108,6 +128,12 @@ The planned fix is per-user signed tokens:
       lib/                   shared infrastructure: logger, RabbitMQ connection, access rules, HttpError
       middleware/            require-token, not-found, error-handler
       modules/
+        observations/
+          observation.schema.ts   raw HMIS data (vitals, lab), validated with Zod
+          reference-ranges.ts     demo thresholds and one assess() rule shared by all processors
+          processors/             one processor per observation kind, raw data to result event
+          observation.pipeline.ts durable work queue in RabbitMQ, inline processing without a broker
+          observations.routes.ts  POST /observations (API key)
         events/
           event.schema.ts    event shape + createEvent()
           event-bus.ts       in-process pub/sub singleton between producers and transports
