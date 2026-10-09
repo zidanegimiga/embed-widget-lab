@@ -1,13 +1,12 @@
 import { Router } from 'express';
-import { config } from '../../config/env.ts';
+import { requireApiKey } from '../../middleware/require-api-key.ts';
 import { requireToken } from '../../middleware/require-token.ts';
-import { publishEvent, streamEvents } from './events.controller.ts';
+import { receiveEvent, streamEvents } from './events.controller.ts';
 
 export const eventsRouter = Router();
 
+// Widgets subscribe (browser token).
 eventsRouter.get('/events', requireToken, streamEvents);
 
-// Manual test hook. Real events come from RabbitMQ, so this stays out of production.
-if (!config.isProduction) {
-  eventsRouter.post('/publish', publishEvent);
-}
+// The HMIS pushes events in (server-to-server API key).
+eventsRouter.post('/events', requireApiKey, receiveEvent);

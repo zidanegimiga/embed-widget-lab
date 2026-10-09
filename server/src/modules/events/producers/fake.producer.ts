@@ -23,5 +23,9 @@ export function createFakeProducer(intervalMs: number): EventProducer {
     async stop() {
       clearInterval(timer);
     },
+    // No broker in this mode, so straight to the bus.
+    async ingest(event) {
+      eventBus.publish(event);
+    },
   };
 }

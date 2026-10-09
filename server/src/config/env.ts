@@ -9,9 +9,15 @@ const envSchema = z.object({
     .default('*')
     .transform((value) => (value === '*' ? '*' : value.split(',').map((o) => o.trim()))),
   WIDGET_TOKEN: z.string().min(1).optional(),
+  INGEST_API_KEY: z.string().min(16).optional(),
   RABBITMQ_URL: z.url().optional(),
   RABBITMQ_EXCHANGE: z.string().default('hmis.events'),
   FAKE_EVENT_INTERVAL_MS: z.coerce.number().int().positive().default(4000),
+}).superRefine((env, ctx) => {
+  if (env.NODE_ENV !== 'production') return;
+  for (const key of ['WIDGET_TOKEN', 'INGEST_API_KEY'] as const) {
+    if (!env[key]) ctx.addIssue({ code: 'custom', path: [key], message: 'Required in production' });
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);
