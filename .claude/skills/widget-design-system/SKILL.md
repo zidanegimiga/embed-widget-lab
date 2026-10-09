@@ -11,8 +11,8 @@ Every rule below exists because of that.
 ## Hard constraints
 
 1. **All styles go in `widget/src/widget.css`.** It is injected into the shadow root by
-   `index.tsx`. Never use inline `style={{...}}` for visual styling (the drag `transform` is the
-   only exception), never inject `<style>` into `document.head`, never use CSS-in-JS.
+   `index.tsx`. Never use inline `style={{...}}` for visual styling (the drag position from
+   `useDraggable`, two of `top`/`right`/`bottom`/`left`, is the only exception), never inject `<style>` into `document.head`, never use CSS-in-JS.
 2. **Never touch the host page.** No global selectors that could leak (`:root`, `html`, `body`),
    no `document.body.style`, no global event listeners except `resize` in `useDraggable.ts`.
 3. **`.panel` starts with `all: initial`.** That resets inheritance from the host. Any new element

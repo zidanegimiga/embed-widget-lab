@@ -17,7 +17,7 @@ widget/
 ├── src/
 │   ├── index.tsx           Public entry: init(), destroy(), and auto-start from the <script> tag
 │   ├── Widget.tsx          The panel UI: header, event list, details, footer
-│   ├── useDraggable.ts     Pointer-event dragging, kept inside the viewport, position saved
+│   ├── useDraggable.ts     Pointer-event dragging, anchored to the nearest corner, saved
 │   ├── useEventStream.ts   Connects over WebSocket or SSE, reconnects, keeps the last 50 events
 │   ├── types.ts            WidgetConfig, HmisEvent, ConnectionStatus
 │   ├── widget.css          All widget styles. Injected into the shadow root, never the page
@@ -50,8 +50,11 @@ dist/
    and calls `init()` once the DOM is ready. `document.currentScript` is captured at load time,
    because it is only available while the script first runs.
 3. **Dragging** (`useDraggable.ts`). Pointer events cover mouse, touch and pen. Pointer capture
-   keeps the drag going if the cursor leaves the header. The position is clamped to the viewport
-   and saved in `localStorage`.
+   keeps the drag going if the cursor leaves the header. The widget starts 24px from the
+   bottom-right corner. When dropped, it anchors to the nearest corner: in the top half it keeps
+   its top edge and grows downward, in the bottom half it keeps its bottom edge and grows upward.
+   That keeps it where the user put it as the window resizes and the event list changes height.
+   The position is clamped to the viewport and saved in `localStorage`.
 4. **Streaming** (`useEventStream.ts`). SSE uses `EventSource`, which reconnects by itself.
    WebSocket reconnects with exponential backoff up to 15 seconds. The token goes in the query
    string because browsers cannot set headers on either.

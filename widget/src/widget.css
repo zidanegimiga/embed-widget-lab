@@ -1,9 +1,8 @@
 /* Lives inside the shadow root. Host page styles never reach here. */
 .panel {
   all: initial;
+  /* Two of top/right/bottom/left are set inline by useDraggable: the nearest corner */
   position: absolute;
-  top: 0;
-  left: 0;
   width: 340px;
   max-height: 460px;
   display: flex;

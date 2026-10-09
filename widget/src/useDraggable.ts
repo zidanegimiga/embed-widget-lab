@@ -1,57 +1,95 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-type Pos = { x: number; y: number };
-const STORAGE_KEY = 'hmis-widget:pos';
+/**
+ * Position as a distance from the nearest corner. A widget dropped in the top half keeps its
+ * top edge in place and grows downward; in the bottom half it keeps its bottom edge and grows
+ * upward. Same for left and right. This keeps it where the user put it as the window resizes
+ * and as the event list changes height.
+ */
+type Anchor = {
+  h: 'left' | 'right';
+  x: number;
+  v: 'top' | 'bottom';
+  y: number;
+};
 
-function clamp(pos: Pos, el: HTMLElement | null): Pos {
-  const w = el?.offsetWidth ?? 320;
-  const h = el?.offsetHeight ?? 60;
+// v2: v1 stored top-left coordinates; ignore those.
+const STORAGE_KEY = 'hmis-widget:pos:v2';
+const DEFAULT_ANCHOR: Anchor = { h: 'right', x: 24, v: 'bottom', y: 24 };
+
+function size(el: HTMLElement | null) {
+  return { w: el?.offsetWidth ?? 340, h: el?.offsetHeight ?? 60 };
+}
+
+/** Converts a top-left position into an anchor on the nearest corner. */
+function toAnchor(left: number, top: number, el: HTMLElement): Anchor {
+  const { w, h } = size(el);
+  const nearLeft = left + w / 2 < window.innerWidth / 2;
+  const nearTop = top + h / 2 < window.innerHeight / 2;
   return {
-    x: Math.max(0, Math.min(pos.x, window.innerWidth - w)),
-    y: Math.max(0, Math.min(pos.y, window.innerHeight - h)),
+    h: nearLeft ? 'left' : 'right',
+    x: nearLeft ? left : window.innerWidth - left - w,
+    v: nearTop ? 'top' : 'bottom',
+    y: nearTop ? top : window.innerHeight - top - h,
   };
 }
 
-function loadPos(): Pos {
+function clamp(anchor: Anchor, el: HTMLElement | null): Anchor {
+  const { w, h } = size(el);
+  return {
+    ...anchor,
+    x: Math.max(0, Math.min(anchor.x, window.innerWidth - w)),
+    y: Math.max(0, Math.min(anchor.y, window.innerHeight - h)),
+  };
+}
+
+function loadAnchor(): Anchor {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
+    const valid =
+      (saved?.h === 'left' || saved?.h === 'right') &&
+      (saved?.v === 'top' || saved?.v === 'bottom') &&
+      Number.isFinite(saved?.x) &&
+      Number.isFinite(saved?.y);
+    if (valid) return saved;
   } catch {}
-  return { x: window.innerWidth - 360, y: window.innerHeight - 480 };
+  return DEFAULT_ANCHOR;
 }
 
 /** Pointer-event drag (mouse, touch, pen). Attach handleProps to the drag handle. */
 export function useDraggable() {
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<Pos>(loadPos);
-  const offset = useRef<Pos | null>(null);
+  const [anchor, setAnchor] = useState<Anchor>(loadAnchor);
+  // Where the pointer grabbed the panel, relative to the panel's top-left corner.
+  const grab = useRef<{ x: number; y: number } | null>(null);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
     const rect = ref.current!.getBoundingClientRect();
-    offset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    grab.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     // Capture keeps events coming even if the pointer leaves the handle or crosses an iframe.
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }, []);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!offset.current) return;
-    setPos(clamp({ x: e.clientX - offset.current.x, y: e.clientY - offset.current.y }, ref.current));
+    const el = ref.current;
+    if (!grab.current || !el) return;
+    setAnchor(clamp(toAnchor(e.clientX - grab.current.x, e.clientY - grab.current.y, el), el));
   }, []);
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
-    if (!offset.current) return;
-    offset.current = null;
+    if (!grab.current) return;
+    grab.current = null;
     (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    setPos((p) => {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch {}
-      return p;
+    setAnchor((a) => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(a)); } catch {}
+      return a;
     });
   }, []);
 
   // Keep it on screen after resizes or when restored from a bigger window.
   useEffect(() => {
-    const onResize = () => setPos((p) => clamp(p, ref.current));
+    const onResize = () => setAnchor((a) => clamp(a, ref.current));
     onResize();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
@@ -59,8 +97,8 @@ export function useDraggable() {
 
   return {
     ref,
-    style: { transform: `translate(${pos.x}px, ${pos.y}px)` },
+    style: { [anchor.h]: `${anchor.x}px`, [anchor.v]: `${anchor.y}px` },
     handleProps: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
-    reclamp: () => setPos((p) => clamp(p, ref.current)),
+    reclamp: () => setAnchor((a) => clamp(a, ref.current)),
   };
 }
