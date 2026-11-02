@@ -80,12 +80,20 @@ them. Update `HmisEvent` in `widget/src/types.ts` at the same time.
 ## Writing style for UI text
 
 Short, plain, sentence case. No exclamation marks, no emojis, no em dashes.
-Examples in use: "Waiting for events...", "Clear", "3 events".
+Examples in use: "Waiting for events...", "Clear", "Load older", "Loading...", "3 events".
+Icon-only buttons get a descriptive `aria-label` ("Minimize live feed", not "Toggle").
+
+## Footer
+
+Event count on the left; actions on the right in `.actions` (6px gap), secondary buttons only
+(`#e6ebf1` background). "Load older" appears only while the server reports more history, and
+shows "Loading..." disabled while a page is in flight.
 
 ## Checklist before finishing
 
 - [ ] Styles only in widget.css, no new globals
 - [ ] Colours from the palette table
 - [ ] New fields optional and typed in types.ts
-- [ ] `npx tsc -p widget` passes and `npm run build -w widget` succeeds
+- [ ] `npx tsc -p widget`, `npm test -w widget` and `npm run build -w widget` pass
+- [ ] New interactive elements have an accessible name, and tests find them by role and name
 - [ ] Checked on the demo page (http://localhost:5050) against its hostile global styles

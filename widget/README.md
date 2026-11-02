@@ -1,7 +1,8 @@
 # Widget
 
 A draggable React panel that any website can embed with one script tag. It floats above the
-host page and shows live patient events streamed from the event server.
+host page, loads recent history over GraphQL, and shows live patient events streamed from the
+event server.
 
 ```html
 <script src="https://WIDGET_HOST/widget.js" data-token="..." async></script>
@@ -17,18 +18,25 @@ widget/
 ├── src/
 │   ├── index.tsx           Public entry: init(), destroy(), and auto-start from the <script> tag
 │   ├── Widget.tsx          The panel UI: header, event list, details, footer
-│   ├── useDraggable.ts     Pointer-event dragging, anchored to the nearest corner, saved
-│   ├── useEventStream.ts   Connects over WebSocket or SSE, reconnects, keeps the last 50 events
+│   ├── useEventStream.ts   Live events (WebSocket or SSE, with reconnect) merged with GraphQL history
+│   ├── useDraggable.ts     Pointer-event dragging (React side)
+│   ├── anchor.ts           Pure position maths for dragging: nearest corner, clamping, parsing
+│   ├── api/
+│   │   └── recent-events.ts  Typed GraphQL query for recent events, maps nodes to HmisEvent
 │   ├── types.ts            WidgetConfig, HmisEvent, ConnectionStatus
 │   ├── widget.css          All widget styles. Injected into the shadow root, never the page
-│   └── vite-env.d.ts       Types for build-time env vars (VITE_SERVER_URL)
+│   ├── vite-env.d.ts       Types for build-time env vars (VITE_SERVER_URL)
+│   ├── test/
+│   │   ├── setup.ts        jest-dom matchers, cleanup between tests
+│   │   └── fakes.ts        Fake EventSource, WebSocket and fetch, plus event builders
+│   └── *.test.ts(x)        Tests sit next to the file they cover (see Testing)
 ├── public/
 │   └── _headers            Cloudflare Pages headers: CORS + short cache for the bundle
-├── vite.config.ts          Library build: one self-contained file per format, React included
+├── vite.config.ts          Library build (one self-contained file per format) and Vitest config
 ├── nginx.conf              Same headers as _headers, for the Docker image
 ├── Dockerfile              Builds the bundle, serves it with nginx
 ├── .env.example            VITE_SERVER_URL
-├── package.json            Scripts: build, watch, preview
+├── package.json            Scripts: build, watch, preview, test
 └── tsconfig.json
 ```
 
@@ -58,7 +66,16 @@ dist/
 4. **Streaming** (`useEventStream.ts`). SSE uses `EventSource`, which reconnects by itself.
    WebSocket reconnects with exponential backoff up to 15 seconds. The token goes in the query
    string because browsers cannot set headers on either.
-5. **Small screens**. Below 768px wide the panel hides, matching the HMIS's supported sizes.
+5. **History** (`api/recent-events.ts`). On open, the widget asks the server's GraphQL endpoint
+   for the 20 most recent events, so the list is not empty after a reload. "Load older" pages
+   back with the connection's `endCursor` until `hasNextPage` is false. Events that arrive both
+   live and in history are shown once. If history fails, the live stream still works.
+
+   It uses a typed `fetch` call rather than Relay or Apollo on purpose: the widget runs one query
+   and is embedded on other people's sites, so a client library would add tens of KB for no
+   benefit (the query added about 1 KB). The server follows the Relay connection spec, so a host
+   app that already uses Relay can query it directly.
+6. **Small screens**. Below 768px wide the panel hides, matching the HMIS's supported sizes.
 
 ## Configuration
 
@@ -106,11 +123,28 @@ tinted background). `details` renders as a label/value list.
 npm run build      # dist/widget.js and dist/widget.mjs
 npm run watch      # rebuild on change
 npm run preview    # serve dist/ on http://localhost:4100
+npm test           # Vitest + React Testing Library
 ```
 
 Set `VITE_SERVER_URL` when building for a deployed server, so host pages can omit `data-url`.
 
+## Testing
+
+Vitest in jsdom with React Testing Library. Browser APIs the widget depends on are replaced by
+fakes in `src/test/fakes.ts`, so tests drive connections, messages and drops directly.
+
+| File | What it covers |
+|---|---|
+| `anchor.test.ts` | Nearest-corner logic, clamping on tiny viewports, rejecting old or malformed saved positions |
+| `api/recent-events.test.ts` | Request shape (URL, token, variables), mapping GraphQL nodes back to events, GraphQL errors |
+| `useEventStream.test.ts` | SSE status, newest-first order, history merged without duplicates, cursor paging, WebSocket backoff timing (1s, then 2s) with fake timers, no reconnect after unmount |
+| `Widget.test.tsx` | Empty state, full event rendering, unread count while minimized, Clear, Load older |
+| `index.test.tsx` | Mounts in a shadow root with its styles, nothing added to the host page, one instance per page, clean destroy |
+
+Tests query by role and accessible name where possible (for example the "Minimize live feed"
+button), so they also guard the widget's accessibility.
+
 ## Size
 
-About 71 KB gzipped, mostly React. Swapping in Preact (`preact/compat`) would bring it under
+About 73 KB gzipped, mostly React. Swapping in Preact (`preact/compat`) would bring it under
 20 KB without changing the components.

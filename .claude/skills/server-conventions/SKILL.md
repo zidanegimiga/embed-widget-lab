@@ -78,9 +78,31 @@ it exports on purpose (for example `ingestEvent()` from `events/producers/index.
 - Graceful shutdown in `server.ts` closes the observation worker, producer, WebSocket server,
   HTTP server (including open SSE streams) and the RabbitMQ connection, in that order.
 
+## GraphQL
+
+- `/graphql` is a **read** API for widgets, behind the widget token. Writes from the HMIS stay
+  on REST (`POST /observations`, `POST /events`) behind the API key.
+- New list fields follow the Relay connection shape already used by `recentEvents`: `first` /
+  `after` arguments, `edges { cursor node }`, `pageInfo { hasNextPage endCursor }`, opaque
+  cursors (`encodeCursor` in `graphql/schema.ts`), and a hard maximum page size.
+- Expected failures throw `GraphQLError` from `graphql` with a message safe to show. Anything
+  else is masked by Yoga as "Unexpected error.".
+- Do not widen `LOG_LEVEL` in `config/env.ts`: Yoga reads the same variable and crashes on
+  values it does not know (such as pino's "fatal").
+
+## Tests
+
+- Vitest. Tests live next to the code as `*.test.ts` and are type-checked with it.
+- HTTP-level tests start the real app with `createApp().listen(0)` and use `fetch`; no mocks of
+  Express. See `modules/graphql/graphql.test.ts`.
+- Env vars for tests are set in `vitest.config.ts` (config is read once at import). Keep the
+  `graphql` alias there: without it Vitest loads graphql's development build alongside the
+  production one Yoga uses, and every GraphQL error gets masked.
+- Run `npm test` in `server/`, or `npm test` at the root for both packages.
+
 ## Checklist before finishing
 
-- [ ] `npx tsc` in `server/` passes
+- [ ] `npx tsc` and `npm test` in `server/` pass
 - [ ] New env vars in `env.ts`, `.env.example`, and `docker-compose.yml` / `render.yaml` if needed
 - [ ] Errors go through `HttpError` or Zod
 - [ ] `server/README.md` tree and endpoint table updated if files or routes changed

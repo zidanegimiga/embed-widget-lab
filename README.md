@@ -11,7 +11,7 @@ Each piece deploys on its own and talks to the others only over URLs:
 | Piece    | What                                  | Local port | Deploys to                               |
 |----------|---------------------------------------|------------|------------------------------------------|
 | widget   | static `widget.js` / `widget.mjs`     | 4100       | any CDN or static host (nginx image)     |
-| server   | Express event API, WebSocket + SSE    | 4000       | any container host                       |
+| server   | Express API: WebSocket, SSE, GraphQL  | 4000       | any container host                       |
 | rabbitmq | message broker                        | 5672       | container, or managed (e.g. CloudAMQP)   |
 | demo     | stand-in for a customer HMIS          | 5050       | anywhere; it only pastes the script tag  |
 
@@ -145,7 +145,7 @@ appears in the widget.
 - Rotating `WIDGET_TOKEN` or `INGEST_API_KEY` means updating Render and the demo project, then
   redeploying the demo.
 
-Type-check both packages: `npm run typecheck`
+Type-check both packages: `npm run typecheck`. Run all tests (widget, then server): `npm test`.
 
 ## Security
 

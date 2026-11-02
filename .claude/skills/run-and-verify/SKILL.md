@@ -32,7 +32,7 @@ curl -X POST localhost:4000/observations \
 
 ## Verifying a change
 
-1. Type-check: `npm run typecheck` (root, covers widget and server).
+1. Type-check and test: `npm run typecheck` and `npm test` (root, covers widget and server).
 2. Rebuild only what changed: `docker compose up -d --build <server|widget|demo>`.
 3. API: `curl localhost:4000/health`, then exercise the endpoint, including a bad payload
    (expect 400), no key (401) and, for ingest, more than `INGEST_RATE_LIMIT` posts (429).
@@ -53,6 +53,17 @@ curl -X POST localhost:4000/observations \
 - **RabbitMQ login refused.** `guest/guest` only works from localhost. Compose creates the user
   from `RABBITMQ_USER` / `RABBITMQ_PASSWORD` in `.env`.
 - **Ports in use.** `lsof -nP -iTCP:4000 -iTCP:4100 -iTCP:5050 -sTCP:LISTEN` shows who holds them.
+  Other projects on this machine use 4000 too. Never kill a process you did not start; run the
+  server on another port instead (`PORT=4010 node src/server.ts` in `server/`) and point the
+  widget at it from the browser console:
+  `HMISWidget.destroy(); HMISWidget.init({ url: 'http://localhost:4010', transport: 'sse' })`.
+- **Responses in an unfamiliar format** (for example `{"error":{"code":"NOT_FOUND",...}}`) mean
+  another app answered on that port. Ours returns `{"error":"..."}`.
+- **Stopping processes.** Kill by port (`lsof -ti tcp:<port>`) or exact command, not broad
+  patterns like `pkill -f src/server.ts`, which can match other projects.
+- **History check.** `curl -X POST localhost:4000/graphql -H 'content-type: application/json'
+  -d '{"query":"{ recentEvents { totalCount } }"}'` (dev has no token; add
+  `-H "Authorization: Bearer $WIDGET_TOKEN"` against Docker or production).
 - **Smooth scrolling.** The demo uses `scroll-behavior: smooth`, so `window.scrollTo` in a test
   takes about a second to land.
 
