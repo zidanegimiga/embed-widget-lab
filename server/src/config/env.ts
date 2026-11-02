@@ -3,7 +3,9 @@ import { z } from 'zod';
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  // Only levels both pino and GraphQL Yoga accept: Yoga's logger also reads LOG_LEVEL and
+  // throws at startup on anything else (such as pino's "fatal").
+  LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug', 'trace']).default('info'),
   ALLOWED_ORIGINS: z
     .string()
     .default('*')
