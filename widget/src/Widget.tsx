@@ -5,7 +5,7 @@ import type { WidgetConfig } from './types';
 
 export function Widget({ config }: { config: WidgetConfig }) {
   const { ref, style, handleProps, reclamp } = useDraggable();
-  const { status, events, clear } = useEventStream(config);
+  const { status, events, hasMore, loadingOlder, loadOlder, clear } = useEventStream(config);
   const [minimized, setMinimized] = useState(false);
   const [seen, setSeen] = useState(0);
 
@@ -20,7 +20,11 @@ export function Widget({ config }: { config: WidgetConfig }) {
         <strong>{config.title ?? 'HMIS Live'}</strong>
         <span className="meta">{config.transport ?? 'ws'}</span>
         {unread > 0 && <span className="badge">{unread}</span>}
-        <button onClick={() => setMinimized((m) => !m)} aria-label="Toggle">
+        <button
+          onClick={() => setMinimized((m) => !m)}
+          aria-label={minimized ? 'Expand live feed' : 'Minimize live feed'}
+          aria-expanded={!minimized}
+        >
           {minimized ? '+' : '-'}
         </button>
       </header>
@@ -53,7 +57,14 @@ export function Widget({ config }: { config: WidgetConfig }) {
           </ul>
           <footer>
             <span>{events.length} events</span>
-            <button onClick={clear}>Clear</button>
+            <div className="actions">
+              {hasMore && (
+                <button onClick={loadOlder} disabled={loadingOlder}>
+                  {loadingOlder ? 'Loading...' : 'Load older'}
+                </button>
+              )}
+              <button onClick={clear}>Clear</button>
+            </div>
           </footer>
         </>
       )}
