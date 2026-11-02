@@ -12,7 +12,8 @@
     "publish:event": "npm run publish:event -w server --",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
-    "docker:publish": "docker compose exec server node src/scripts/publish-event.ts"
+    "docker:publish": "docker compose exec server node src/scripts/publish-event.ts",
+    "test": "npm test -w widget && npm test -w server"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

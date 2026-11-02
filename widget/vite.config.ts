@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 // Library build: one self-contained file per format, React bundled in.
@@ -15,5 +15,11 @@ export default defineConfig({
       formats: ['iife', 'es'],
       fileName: (format) => (format === 'iife' ? 'widget.js' : 'widget.mjs'),
     },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    // Process widget.css so the ?inline import returns real CSS in tests.
+    css: { include: [/widget\.css/] },
   },
 });
